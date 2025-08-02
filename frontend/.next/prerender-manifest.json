@@ -73,6 +73,30 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/pepinieres": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "Next-Action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/pepinieres",
+      "dataRoute": "/pepinieres.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/pepinieres-globales": {
       "experimentalBypassFor": [
         {
@@ -112,30 +136,6 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/profil",
       "dataRoute": "/profil.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/pepinieres": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "Next-Action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/pepinieres",
-      "dataRoute": "/pepinieres.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -245,8 +245,8 @@
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "6ee139426a31a8676f0ccdb7557030d5",
-    "previewModeSigningKey": "026e37a0417cf0299d47ec35c3d2a3ec62ae101cffbade19e32231a4bc586592",
-    "previewModeEncryptionKey": "d945b7e8dcbdd1ed7e15a1f5119ce8e24f41290c7b6465b342a54e979ada041a"
+    "previewModeId": "7aa1674bfe3f91ab64037079b323c6a0",
+    "previewModeSigningKey": "8f6b473ec0e3529e4766f0254c7e13da60ae377bf481eb6b8def79f93145d9cf",
+    "previewModeEncryptionKey": "95b6495cca289ebb5a43abe4abad92a3ef703ac6a2e9d1b66d70ac22ccb12f45"
   }
 }
