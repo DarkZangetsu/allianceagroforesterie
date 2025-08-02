@@ -1,0 +1,13 @@
+{
+  "/page": "app/page.js",
+  "/pepinieres-globales/page": "app/pepinieres-globales/page.js",
+  "/parcelles-globales/page": "app/parcelles-globales/page.js",
+  "/parcelles/page": "app/parcelles/page.js",
+  "/pepinieres/page": "app/pepinieres/page.js",
+  "/login/page": "app/login/page.js",
+  "/sieges-globaux/page": "app/sieges-globaux/page.js",
+  "/profil/page": "app/profil/page.js",
+  "/register/page": "app/register/page.js",
+  "/sieges/page": "app/sieges/page.js",
+  "/_not-found/page": "app/_not-found/page.js"
+}

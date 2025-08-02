@@ -1,0 +1,13 @@
+{
+  "/page": "/",
+  "/pepinieres-globales/page": "/pepinieres-globales",
+  "/parcelles-globales/page": "/parcelles-globales",
+  "/parcelles/page": "/parcelles",
+  "/pepinieres/page": "/pepinieres",
+  "/login/page": "/login",
+  "/sieges-globaux/page": "/sieges-globaux",
+  "/profil/page": "/profil",
+  "/register/page": "/register",
+  "/sieges/page": "/sieges",
+  "/_not-found/page": "/_not-found"
+}
