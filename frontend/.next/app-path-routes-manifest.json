@@ -1,13 +1,13 @@
 {
   "/_not-found/page": "/_not-found",
-  "/login/page": "/login",
-  "/page": "/",
   "/parcelles-globales/page": "/parcelles-globales",
-  "/parcelles/page": "/parcelles",
+  "/profil/page": "/profil",
   "/pepinieres-globales/page": "/pepinieres-globales",
   "/pepinieres/page": "/pepinieres",
-  "/profil/page": "/profil",
   "/register/page": "/register",
   "/sieges-globaux/page": "/sieges-globaux",
-  "/sieges/page": "/sieges"
+  "/sieges/page": "/sieges",
+  "/page": "/",
+  "/login/page": "/login",
+  "/parcelles/page": "/parcelles"
 }

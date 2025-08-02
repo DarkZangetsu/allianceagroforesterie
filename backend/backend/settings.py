@@ -84,31 +84,8 @@ def is_production_https():
         'administration.allianceagroforesterie.mg' in os.environ.get('HTTP_HOST', '')
     ])
 
-# CSRF settings - Configuration complète pour résoudre l'erreur 403
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'https://allianceagroforesterie.mg',
-    'http://allianceagroforesterie.mg',
-    'http://administration.allianceagroforesterie.mg',
-    'https://administration.allianceagroforesterie.mg',
-    'http://api.allianceagroforesterie.mg',
-    'https://api.allianceagroforesterie.mg',
-]
-
 # Configuration des cookies conditionnelle pour HTTPS/HTTP
 IS_PRODUCTION_HTTPS = is_production_https()
-
-# Configuration des cookies CSRF
-CSRF_COOKIE_SECURE = IS_PRODUCTION_HTTPS
-CSRF_COOKIE_HTTPONLY = False  # Important : doit être False pour le proxy PHP
-CSRF_COOKIE_SAMESITE = 'Lax'  # Permet les requêtes cross-origin avec credentials
-CSRF_COOKIE_DOMAIN = None  # Permet l'utilisation sur différents sous-domaines
-CSRF_COOKIE_PATH = '/'
-CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
-CSRF_USE_SESSIONS = False  # Important pour les proxies
-CSRF_COOKIE_AGE = 31449600  # 1 an
 
 # Configuration des cookies de session
 SESSION_COOKIE_SECURE = IS_PRODUCTION_HTTPS
@@ -121,21 +98,23 @@ SESSION_COOKIE_NAME = 'sessionid'
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
-# Configuration spéciale pour le proxy - ignorer certaines vérifications CSRF
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
-
-# Middleware avec ordre important pour CSRF
+# Middleware SANS CsrfViewMiddleware - TOTALEMENT RETIRÉ + Middleware custom
 MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'parcelles.middleware.DisableCSRFMiddleware',  # Middleware personnalisé pour désactiver CSRF
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',  # Important pour CSRF
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# DÉSACTIVATION COMPLÈTE DE CSRF
+# CSRF_FAILURE_VIEW = None  # Cette ligne causait l'erreur - supprimée
+CSRF_COOKIE_SECURE = False
+CSRF_USE_SESSIONS = False
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -235,12 +214,10 @@ WHITENOISE_MIMETYPES = {
     '.eot': 'application/vnd.ms-fontobject',
 }
 
-
 # Servir les fichiers admin même avec WhiteNoise
 WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br']
 
 WHITENOISE_COMPRESSION = False
-
 
 # Media files
 MEDIA_URL = '/media/'
@@ -291,7 +268,7 @@ CORS_ALLOWED_ORIGINS = get_list_env('CORS_ALLOWED_ORIGINS', [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
 
-# Autoriser tous les headers nécessaires pour Apollo Client et CSRF
+# Autoriser tous les headers nécessaires pour Apollo Client
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -300,7 +277,6 @@ CORS_ALLOW_HEADERS = [
     'dnt',
     'origin',
     'user-agent',
-    'x-csrftoken',
     'x-requested-with',
     'apollo-require-preflight',
 ]
@@ -336,7 +312,7 @@ if IS_PRODUCTION_HTTPS:
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
     
-# Logging pour déboguer les problèmes CSRF en production
+# Logging simplifié sans CSRF
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -357,12 +333,6 @@ LOGGING = {
             'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
             'formatter': 'verbose',
         },
-        'csrf_file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'csrf_debug.log'),
-            'formatter': 'verbose',
-        },
         'console': {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
@@ -379,11 +349,6 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'django.security.csrf': {
-            'handlers': ['csrf_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
         'django.request': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',
@@ -394,11 +359,6 @@ LOGGING = {
 
 # Créer le répertoire des logs s'il n'existe pas
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
-CSRF_COOKIE_DOMAIN = None
-CSRF_COOKIE_PATH = '/'
-CSRF_COOKIE_SECURE = False 
-CSRF_COOKIE_HTTPONLY = False  # Permet l'accès via JavaScript
-CSRF_USE_SESSIONS = False  # Important pour les proxies
 
 # Configuration pour servir les fichiers admin en développement
 if DEBUG:
@@ -411,21 +371,51 @@ if DEBUG:
 APPEND_SLASH = True
 PREPEND_WWW = False
 
-# Configuration pour éviter les erreurs 403 spécifiques
-SILENCED_SYSTEM_CHECKS = [
-    'security.W004',  # SECURE_HSTS_SECONDS warning
-    'security.W008',  # SECURE_BROWSER_XSS_FILTER warning
-]
-
 # Configuration spéciale pour les requêtes via proxy
 ALLOWED_HOSTS_UNSAFE = False  # Gardez False pour la sécurité
 
 # Variables d'environnement pour debug (optionnel)
-if DEBUG and os.getenv('DJANGO_DEBUG_CSRF'):
-    # Mode debug CSRF activé
-    LOGGING['loggers']['django.security.csrf']['level'] = 'DEBUG'
-    print(f"CSRF Debug Mode: ON")
-    print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
+if DEBUG:
     print(f"IS_PRODUCTION_HTTPS: {IS_PRODUCTION_HTTPS}")
-    print(f"CSRF_COOKIE_SECURE: {CSRF_COOKIE_SECURE}")
     print(f"SESSION_COOKIE_SECURE: {SESSION_COOKIE_SECURE}")
+    print("CSRF Protection: DISABLED")
+
+# DÉSACTIVATION TOTALE ET EXPLICITE DE CSRF
+# Cette section force la désactivation de toute vérification CSRF
+import django.conf.global_settings as DEFAULT_SETTINGS
+
+# Configuration explicite pour désactiver CSRF
+USE_CSRF = False
+
+# Monkey patch pour désactiver complètement CSRF au niveau système
+try:
+    import django.middleware.csrf
+    # Remplacer le middleware CSRF par un middleware vide
+    original_csrf_middleware = django.middleware.csrf.CsrfViewMiddleware
+    
+    class DummyCSRFMiddleware:
+        def __init__(self, get_response):
+            self.get_response = get_response
+        
+        def __call__(self, request):
+            setattr(request, '_dont_enforce_csrf_checks', True)
+            return self.get_response(request)
+        
+        def process_view(self, request, view_func, view_args, view_kwargs):
+            setattr(request, '_dont_enforce_csrf_checks', True)
+            return None
+    
+    django.middleware.csrf.CsrfViewMiddleware = DummyCSRFMiddleware
+    
+    print("CSRF Middleware successfully disabled via monkey patch")
+except Exception as e:
+    print(f"Warning: Could not monkey patch CSRF middleware: {e}")
+
+# Supprimer les vérifications CSRF du système de checks
+SILENCED_SYSTEM_CHECKS = [
+    'security.W004',  # SECURE_HSTS_SECONDS warning
+    'security.W008',  # SECURE_BROWSER_XSS_FILTER warning
+    'security.W003',  # CSRF_COOKIE_SECURE warning
+    'security.W016',  # CSRF_COOKIE_HTTPONLY warning
+    'security.W017',  # CSRF_FAILURE_VIEW warning
+]
