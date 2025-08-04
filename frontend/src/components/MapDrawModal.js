@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { MapContainer, TileLayer, FeatureGroup } from 'react-leaflet';
 import { EditControl } from 'react-leaflet-draw';
+import { Edit3, Trash2, Square } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 
@@ -9,8 +10,73 @@ const MapDrawModal = ({ open, onClose, onSave, initialGeojson }) => {
   const [geojson, setGeojson] = useState(initialGeojson || null);
   const featureGroupRef = useRef();
   const [basemap, setBasemap] = useState('standard');
-  // Toujours en plein écran
-  const fullscreen = true;
+
+  // Fonction pour convertir une icône React en SVG data URL
+  const iconToDataUrl = (IconComponent) => {
+    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IconComponent}</svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svgString)}")`;
+  };
+
+  // Remplacer les icônes par défaut par des icônes Lucide React
+  useEffect(() => {
+    if (open) {
+      const style = document.createElement('style');
+      style.id = 'leaflet-draw-lucide-icons';
+      style.textContent = `
+        /* Masquer les icônes par défaut et ajuster le positionnement */
+        .leaflet-draw-toolbar a {
+          text-indent: -9999px !important;
+          overflow: hidden !important;
+        }
+        
+        /* Icône Square pour Polygone */
+        .leaflet-draw-toolbar .leaflet-draw-draw-polygon {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: center !important;
+          background-size: 18px 18px !important;
+        }
+        
+        /* Icône Edit3 pour Édition */
+        .leaflet-draw-toolbar .leaflet-draw-edit-edit {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: center !important;
+          background-size: 18px 18px !important;
+        }
+        
+        /* Icône Trash2 pour Suppression */
+        .leaflet-draw-toolbar .leaflet-draw-edit-remove {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 6 3 0'/%3E%3Cpath d='M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z'/%3E%3Cline x1='10' y1='11' x2='10' y2='17'/%3E%3Cline x1='14' y1='11' x2='14' y2='17'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: center !important;
+          background-size: 18px 18px !important;
+        }
+
+        /* S'assurer que les boutons ont la bonne taille et le bon centrage */
+        .leaflet-draw-toolbar a {
+          width: 26px !important;
+          height: 26px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+
+        /* Hover effect personnalisé */
+        .leaflet-draw-toolbar a:hover {
+          background-color: #f0f0f0 !important;
+        }
+      `;
+      document.head.appendChild(style);
+      
+      return () => {
+        const existingStyle = document.getElementById('leaflet-draw-lucide-icons');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+      };
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -38,6 +104,7 @@ const MapDrawModal = ({ open, onClose, onSave, initialGeojson }) => {
       onClose();
     }
   };
+  
   const modalContainer = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50';
   // Supprimer le mode modal compact, toujours utiliser le mode fullscreen
   const modalContentFullscreen = 'relative w-screen h-screen max-w-none max-h-none rounded-none bg-white flex flex-col';
@@ -134,4 +201,4 @@ const MapDrawModal = ({ open, onClose, onSave, initialGeojson }) => {
   return ReactDOM.createPortal(modalJSX, typeof window !== 'undefined' ? document.body : null);
 };
 
-export default MapDrawModal; 
+export default MapDrawModal;

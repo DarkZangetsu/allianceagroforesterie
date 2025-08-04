@@ -34,7 +34,13 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 
-const SiegesMap = ({ sieges = [], onSiegeClick, mapStyle = 'street', style, center }) => {
+const SiegesMap = ({ sieges = [], onSiegeClick, mapStyle = 'street', style, center, mapFullscreen = false }) => {
+  // Configuration des niveaux de zoom maximum par style de carte
+  const maxZoomLevels = {
+    street: 19,
+    satellite: 17,
+    hybrid: 17,
+  };
   const [selectedSiege, setSelectedSiege] = useState(null);
   const [showSiegeGallery, setShowSiegeGallery] = useState(false);
   const [mapKey, setMapKey] = useState(0);
@@ -73,7 +79,7 @@ const SiegesMap = ({ sieges = [], onSiegeClick, mapStyle = 'street', style, cent
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [sieges, mapKey]);
+  }, [sieges, mapKey, style, mapFullscreen]);
 
   useLayoutEffect(() => {
     setTimeout(() => {
@@ -88,14 +94,15 @@ const SiegesMap = ({ sieges = [], onSiegeClick, mapStyle = 'street', style, cent
     if (onSiegeClick) {
       onSiegeClick(siege);
     }
-    // Zoom sur le siège
+    // Zoom sur le siège avec limitation du zoom selon le style
     const lat = Number(siege.latitude);
     const lng = Number(siege.longitude);
+    const currentMapStyle = mapStyle || 'street';
     if (
       typeof lat === 'number' && typeof lng === 'number' &&
       !isNaN(lat) && !isNaN(lng) && mapRef.current
     ) {
-      mapRef.current.setView([lat, lng], 15);
+      mapRef.current.setView([lat, lng], maxZoomLevels[currentMapStyle]);
     } else {
       console.warn('Coordonnées invalides pour le siège (setView)', siege);
     }

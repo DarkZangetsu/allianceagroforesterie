@@ -1,13 +1,13 @@
 {
-  "/_not-found/page": "/_not-found",
-  "/parcelles-globales/page": "/parcelles-globales",
-  "/profil/page": "/profil",
-  "/pepinieres-globales/page": "/pepinieres-globales",
-  "/pepinieres/page": "/pepinieres",
-  "/register/page": "/register",
-  "/sieges-globaux/page": "/sieges-globaux",
-  "/sieges/page": "/sieges",
   "/page": "/",
+  "/parcelles/page": "/parcelles",
+  "/_not-found/page": "/_not-found",
+  "/pepinieres/page": "/pepinieres",
   "/login/page": "/login",
-  "/parcelles/page": "/parcelles"
+  "/parcelles-globales/page": "/parcelles-globales",
+  "/pepinieres-globales/page": "/pepinieres-globales",
+  "/profil/page": "/profil",
+  "/sieges-globaux/page": "/sieges-globaux",
+  "/register/page": "/register",
+  "/sieges/page": "/sieges"
 }

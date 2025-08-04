@@ -89,8 +89,26 @@ export default function ParcellesPage() {
   const { data: parcellesData, loading: parcellesLoading, error: parcellesError } = useQuery(GET_ALL_PARCELLES);
   const { data: usersData, loading: usersLoading, error: usersError } = useQuery(GET_ALL_USERS);
 
-  // Filtrage des parcelles selon les membres sélectionnés
+  // Fonction utilitaire pour obtenir toutes les pratiques uniques (pour débogage)
+  const getAllUniquePratiques = () => {
+    if (!parcellesData?.allParcelles) return [];
+    
+    const allPratiques = new Set();
+    
+    parcellesData.allParcelles.forEach(parcelle => {
+      if (parcelle.pratique) {
+        parcelle.pratique
+          .split(',')
+          .map(p => p.trim())
+          .filter(p => p.length > 0)
+          .forEach(p => allPratiques.add(p));
+      }
+    });
+    
+    return Array.from(allPratiques).sort();
+  };
 
+  // Filtrage des parcelles selon les membres sélectionnés et pratiques - VERSION CORRIGÉE
   useEffect(() => {
     if (parcellesData?.allParcelles) {
       let filtered = parcellesData.allParcelles;
@@ -100,22 +118,48 @@ export default function ParcellesPage() {
         filtered = filtered.filter(parcelle => selectedMembers.includes(parcelle.user.id));
       }
       
-      // Filtre par pratique - CORRECTION ICI
+      // Filtre par pratique - VERSION AMÉLIORÉE ET CORRIGÉE
       if (selectedPratiques.length > 0) {
         filtered = filtered.filter(parcelle => {
           if (!parcelle.pratique) return false;
           
-          // Diviser les pratiques de la parcelle par virgule et nettoyer les espaces
+          // Diviser les pratiques de la parcelle par virgule et nettoyer
           const parcellesPratiques = parcelle.pratique
             .split(',')
-            .map(p => p.trim().toLowerCase().replace(/\s+/g, ""));
+            .map(p => p.trim())
+            .filter(p => p.length > 0); // Éliminer les chaînes vides
+          
+          // Normaliser pour la comparaison (minuscules, sans espaces multiples)
+          const normalizedParcellesPratiques = parcellesPratiques.map(p => 
+            p.toLowerCase().replace(/\s+/g, ' ').trim()
+          );
           
           // Vérifier si au moins une pratique sélectionnée correspond
           return selectedPratiques.some(selectedPratique => {
-            const cleanSelected = selectedPratique.toLowerCase().replace(/\s+/g, "");
-            return parcellesPratiques.some(parcellePratique => 
-              parcellePratique.includes(cleanSelected) || cleanSelected.includes(parcellePratique)
-            );
+            const normalizedSelected = selectedPratique.toLowerCase().replace(/\s+/g, ' ').trim();
+            
+            return normalizedParcellesPratiques.some(parcellePratique => {
+              // Correspondance exacte
+              if (parcellePratique === normalizedSelected) return true;
+              
+              // Correspondance partielle (contient)
+              if (parcellePratique.includes(normalizedSelected) || 
+                  normalizedSelected.includes(parcellePratique)) return true;
+              
+              // Correspondance par mots-clés (pour des pratiques composées)
+              const selectedWords = normalizedSelected.split(' ').filter(w => w.length > 2);
+              const parcelleWords = parcellePratique.split(' ').filter(w => w.length > 2);
+              
+              // Si au moins 70% des mots correspondent
+              if (selectedWords.length > 0 && parcelleWords.length > 0) {
+                const matchingWords = selectedWords.filter(word => 
+                  parcelleWords.some(pWord => pWord.includes(word) || word.includes(pWord))
+                );
+                return matchingWords.length / selectedWords.length >= 0.7;
+              }
+              
+              return false;
+            });
           });
         });
       }
@@ -141,6 +185,9 @@ export default function ParcellesPage() {
       setCurrentPage(1);
     }
   }, [parcellesData, selectedMembers, selectedPratiques, searchValue]);
+
+  // Pour débogage des pratiques (décommentez si nécessaire)
+  // console.log('Pratiques uniques dans les données:', getAllUniquePratiques());
 
   // Calcul des données paginées
   const totalItems = filteredParcelles.length;
@@ -239,7 +286,6 @@ export default function ParcellesPage() {
     exportToCSV(data, filename);
   };
 
-
   // Génération des numéros de pages à afficher
   const getPageNumbers = () => {
     const pageNumbers = [];
@@ -331,6 +377,11 @@ export default function ParcellesPage() {
                 {selectedMembers.length > 0 && (
                   <span className="text-sm text-gray-500">
                     Filtré par {selectedMembers.length} membre(s)
+                  </span>
+                )}
+                {selectedPratiques.length > 0 && (
+                  <span className="text-sm text-gray-500">
+                    Filtré par {selectedPratiques.length} pratique(s)
                   </span>
                 )}
               </div>

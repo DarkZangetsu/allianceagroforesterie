@@ -82,12 +82,34 @@ const ParcellesMap = ({
   style,
   center,
   mode = "parcelle",
+  mapFullscreen = false,
 }) => {
-  const [selectedParcelle, setSelectedParcelle] = useState(null);;
+  const [selectedParcelle, setSelectedParcelle] = useState(null);
+  const [selectedSiege, setSelectedSiege] = useState(null);
   const [showGallery, setShowGallery] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   const mapRef = useRef(null);
   const galleryRef = useRef(null);
+
+  // Configuration des niveaux de zoom maximum par style de carte
+  const maxZoomLevels = {
+    street: 19,
+    satellite: 17, // Augmenté pour permettre plus de détails
+    hybrid: 17,
+  };
+
+  // Configuration des styles de carte avec URLs corrigées
+  const mapStyles = {
+    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    hybrid: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  };
+
+  const attribution = {
+    street: "© OpenStreetMap contributors",
+    satellite: "Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+    hybrid: "© Esri",
+  };
 
   // S'assurer que geojson est un objet (pas une chaîne)
   const parseGeojson = (geojson) => {
@@ -124,25 +146,10 @@ const ParcellesMap = ({
     [-11.945, 50.483], // Nord-Est
   ];
 
-  const mapStyles = {
-    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    satellite:
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    hybrid:
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  };
-
-  const attribution = {
-    street: "© OpenStreetMap contributors",
-    satellite:
-      "Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-    hybrid: "© Esri",
-  };
-
   // Forcer le re-render de la carte quand les parcelles changent
   useEffect(() => {
     setMapKey((prev) => prev + 1);
-  }, [parcelles]);
+  }, [parcelles, mapStyle, style]); // Ajout de style pour re-render lors du changement
 
   // Invalidation de la taille de la carte après le rendu
   useEffect(() => {
@@ -154,24 +161,36 @@ const ParcellesMap = ({
         if (parcelles && parcelles.length > 0) {
           const bounds = [];
           parcelles.forEach((parcelle) => {
-            if (parcelle.geojson && parcelle.geojson.coordinates) {
-              // Convertir les coordonnées GeoJSON en format Leaflet
-              const coordinates = parcelle.geojson.coordinates[0].map(
-                (coord) => [coord[1], coord[0]]
-              );
-              bounds.push(...coordinates);
+            const geojson = parseGeojson(parcelle.geojson);
+            if (geojson && geojson.coordinates) {
+              if (geojson.type === "Polygon") {
+                // Convertir les coordonnées GeoJSON en format Leaflet
+                const coordinates = geojson.coordinates[0].map(
+                  (coord) => [coord[1], coord[0]]
+                );
+                bounds.push(...coordinates);
+              } else if (geojson.type === "MultiPolygon") {
+                geojson.coordinates.forEach(polygon => {
+                  const coordinates = polygon[0].map(coord => [coord[1], coord[0]]);
+                  bounds.push(...coordinates);
+                });
+              }
             }
           });
 
           if (bounds.length > 0) {
-            mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+            const leafletBounds = L.latLngBounds(bounds);
+            mapRef.current.fitBounds(leafletBounds, { 
+              padding: [20, 20],
+              maxZoom: maxZoomLevels[mapStyle]
+            });
           }
         }
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [parcelles, mapKey]);
+  }, [parcelles, mapKey, mapStyle, style, mapFullscreen]);
 
   useLayoutEffect(() => {
     setTimeout(() => {
@@ -186,13 +205,25 @@ const ParcellesMap = ({
     if (onParcelleClick) {
       onParcelleClick(parcelle);
     }
-    // Zoom sur la parcelle
+    // Zoom sur la parcelle avec limitation
     if (geojson && geojson.coordinates && mapRef.current) {
-      const latlngs = geojson.coordinates[0].map((coord) => [
-        coord[1],
-        coord[0],
-      ]);
-      mapRef.current.fitBounds(latlngs, { maxZoom: 17, padding: [40, 40] });
+      let bounds = [];
+      if (geojson.type === "Polygon") {
+        bounds = geojson.coordinates[0].map((coord) => [coord[1], coord[0]]);
+      } else if (geojson.type === "MultiPolygon") {
+        geojson.coordinates.forEach(polygon => {
+          const coordinates = polygon[0].map(coord => [coord[1], coord[0]]);
+          bounds.push(...coordinates);
+        });
+      }
+      
+      if (bounds.length > 0) {
+        const leafletBounds = L.latLngBounds(bounds);
+        mapRef.current.fitBounds(leafletBounds, { 
+          maxZoom: maxZoomLevels[mapStyle],
+          padding: [40, 40] 
+        });
+      }
     }
   };
 
@@ -219,11 +250,10 @@ const ParcellesMap = ({
     }));
   };
 
-
   // Gestion du clic sur la carte pour fermer les panneaux de détail
   const handleMapClick = (e) => {
     setSelectedParcelle(null);
-    // (ajouter ici setSelectedPepiniere si besoin)
+    setSelectedSiege(null);
   };
 
   if (typeof window === "undefined") {
@@ -269,7 +299,11 @@ const ParcellesMap = ({
         className="z-0"
         maxBounds={MADAGASCAR_BOUNDS}
         maxBoundsViscosity={1.0}
-        maxZoom={19}
+        maxZoom={maxZoomLevels[mapStyle]}
+        minZoom={5} // Zoom minimum pour éviter de trop dézoomer
+        zoomControl={true} // S'assurer que les contrôles de zoom sont activés
+        scrollWheelZoom={true} // Activer le zoom avec la molette
+        doubleClickZoom={true} // Activer le zoom par double-clic
         whenReady={() => {
           setTimeout(() => {
             if (mapRef.current && mapRef.current.invalidateSize) {
@@ -282,20 +316,28 @@ const ParcellesMap = ({
         <TileLayer
           url={mapStyles[mapStyle]}
           attribution={attribution[mapStyle]}
+          maxZoom={maxZoomLevels[mapStyle]}
+          minZoom={5}
         />
-        {/* Satellite + labels (comme dans MapDrawModal) */}
+        
+        {/* Satellite + labels */}
         {mapStyle === "satellite" && (
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
             attribution="Labels © Esri"
+            maxZoom={maxZoomLevels[mapStyle]}
+            minZoom={5}
           />
         )}
+        
         {/* Hybride = satellite + OSM routes/villes */}
         {mapStyle === "hybrid" && (
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="© OpenStreetMap contributors"
             opacity={0.7}
+            maxZoom={maxZoomLevels[mapStyle]}
+            minZoom={5}
           />
         )}
 
@@ -304,21 +346,28 @@ const ParcellesMap = ({
           Array.isArray(parcelles) &&
           parcelles.length > 0 &&
           parcelles.map((parcelle) => {
-            // S'assurer que geojson est bien un objet
             const geojson = parseGeojson(parcelle.geojson);
+            let polygons = [];
             let center = null;
-            if (geojson && geojson.type === "Polygon" && geojson.coordinates) {
-              center = getPolygonCenter(geojson.coordinates);
+            if (geojson) {
+              if (geojson.type === "Polygon" && geojson.coordinates) {
+                polygons = [geojson.coordinates[0].map((coord) => [coord[1], coord[0]])];
+                center = getPolygonCenter(geojson.coordinates);
+              } else if (geojson.type === "MultiPolygon" && geojson.coordinates) {
+                polygons = geojson.coordinates.map(poly => poly[0].map(coord => [coord[1], coord[0]]));
+                // Calculer le centre du premier polygone
+                if (geojson.coordinates[0] && geojson.coordinates[0][0]) {
+                  center = getPolygonCenter(geojson.coordinates[0]);
+                }
+              }
             }
             return (
               <div key={parcelle.id}>
-                {/* Polygone de la parcelle */}
-                {geojson && geojson.coordinates && (
+                {/* Polygone(s) de la parcelle */}
+                {polygons.map((positions, idx) => (
                   <Polygon
-                    positions={geojson.coordinates[0].map((coord) => [
-                      coord[1],
-                      coord[0],
-                    ])}
+                    key={parcelle.id + '-' + idx}
+                    positions={positions}
                     pathOptions={{
                       color: "#3b82f6",
                       weight: 2,
@@ -328,7 +377,7 @@ const ParcellesMap = ({
                       click: () => handleParcelleClick(parcelle, geojson),
                     }}
                   />
-                )}
+                ))}
                 {/* Marqueur au centre de la parcelle */}
                 {center && (
                   <Marker
@@ -344,6 +393,7 @@ const ParcellesMap = ({
               </div>
             );
           })}
+          
         {/* Affichage des sièges uniquement si mode === 'siege' */}
         {mode === "siege" &&
           sieges.map((siege) => {
@@ -370,6 +420,7 @@ const ParcellesMap = ({
               ></Marker>
             );
           })}
+          
         {/* Affichage des pépinières uniquement si mode === 'pepinieres' */}
         {mode === "pepinieres" &&
           pepinieres.map((pepiniere) => {
@@ -415,7 +466,7 @@ const ParcellesMap = ({
           {/* Header fixe avec gradient doux */}
           <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm sticky top-0 z-10 rounded-t-3xl border-b border-blue-100/50">
             <div className="flex items-center gap-3">
-              {selectedParcelle.user.logo ? (
+              {selectedParcelle.user && selectedParcelle.user.logo ? (
                 <img
                   src={
                     selectedParcelle.user.logo.startsWith('http')
@@ -575,7 +626,7 @@ const ParcellesMap = ({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z"
                     />
                   </svg>
                   Voir les images ({selectedParcelle.images.length})

@@ -123,13 +123,13 @@ const CSVImportExport = ({ onImportSuccess }) => {
 
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-6 text-gray-800 text-center">Import/Export CSV Parcelles</h3>
+      <h3 className="text-xl font-semibold mb-6 text-gray-800 text-center">Import/Export CSV institutions</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Export Section */}
         <div className="space-y-4">
-          <h4 className="text-lg font-medium text-gray-700">Exporter les parcelles</h4>
+          <h4 className="text-lg font-medium text-gray-700">Exporter les institutions</h4>
           <p className="text-sm text-gray-600">
-            Téléchargez toutes vos parcelles au format CSV pour sauvegarder ou partager vos données.
+            Téléchargez toutes vos institutions au format CSV pour sauvegarder ou partager vos données.
           </p>
           <button
             onClick={handleExport}
@@ -157,9 +157,9 @@ const CSVImportExport = ({ onImportSuccess }) => {
 
         {/* Import Section */}
         <div className="space-y-4">
-          <h4 className="text-lg font-medium text-gray-700">Importer des parcelles</h4>
+          <h4 className="text-lg font-medium text-gray-700">Importer des institutions</h4>
           <p className="text-sm text-gray-600">
-            Importez des parcelles depuis un fichier CSV. Téléchargez d'abord le modèle pour voir le format attendu.
+            Importez des institutions depuis un fichier CSV. Téléchargez d'abord le modèle pour voir le format attendu.
           </p>
           
           <div className="space-y-3">
@@ -235,7 +235,7 @@ const CSVImportExport = ({ onImportSuccess }) => {
           <li>• Les <strong>Pratiques</strong> peuvent être multiples, séparées par des virgules</li>
           <li>• La <strong>géométrie</strong> doit être au format liste de points [[lon,lat],[lon,lat],...]</li>
           <li>• Tous les autres champs sont optionnels</li>
-          <li>• Les parcelles importées sans géométrie auront un polygone par défaut</li>
+          <li>• Les institutions importées sans géométrie auront un polygone par défaut</li>
         </ul>
       </div>
     </div>

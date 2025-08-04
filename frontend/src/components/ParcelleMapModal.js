@@ -52,7 +52,7 @@ export default function ParcelleMapModal({ open, onClose, parcelle }) {
           </select>
         </div>
         <div style={{ flex: 1, minHeight: 0 }}>
-          <ParcellesMap parcelles={[parcelle]} style={{ height: '100%', width: '100%' }} mapStyle={mapStyle} />
+          <ParcellesMap parcelles={[parcelle]} style={{ height: '100%', width: '100%' }} mapStyle={mapStyle} mode="parcelle" />
         </div>
       </div>
     </div>

@@ -51,6 +51,7 @@ const PepinieresMap = ({
   mapStyle = "street",
   style,
   center,
+  mapFullscreen = false,
 }) => {
   const [selectedPepiniere, setSelectedPepiniere] = useState(null);
   const [showGallery, setShowGallery] = useState(false);
@@ -64,6 +65,13 @@ const PepinieresMap = ({
     [-25.607, 43.254], // Sud-Ouest
     [-11.945, 50.483], // Nord-Est
   ];
+
+  // Configuration des niveaux de zoom maximum par style de carte
+  const maxZoomLevels = {
+    street: 19,
+    satellite: 17, // Limitation pour éviter les tuiles blanches
+    hybrid: 17,
+  };
 
   const mapStyles = {
     street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -87,6 +95,8 @@ const PepinieresMap = ({
 
   // Invalidation de la taille de la carte après le rendu
   useEffect(() => {
+    const currentMapStyle = mapStyle || "street"; // Valeur par défaut pour éviter undefined
+    
     const timer = setTimeout(() => {
       if (mapRef.current) {
         mapRef.current.invalidateSize();
@@ -105,14 +115,17 @@ const PepinieresMap = ({
           });
 
           if (bounds.length > 0) {
-            mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+            mapRef.current.fitBounds(bounds, { 
+              padding: [20, 20], 
+              maxZoom: maxZoomLevels[currentMapStyle]
+            });
           }
         }
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [pepinieres, mapKey]);
+  }, [pepinieres, mapKey, mapStyle, style, mapFullscreen]); // S'assurer qu'il y a toujours une valeur
 
   useLayoutEffect(() => {
     setTimeout(() => {
@@ -127,12 +140,14 @@ const PepinieresMap = ({
     if (onPepiniereClick) {
       onPepiniereClick(pepiniere);
     }
-    // Zoom sur la pépinière
+    // Zoom sur la pépinière avec limite de zoom respectée
     if (pepiniere.latitude && pepiniere.longitude && mapRef.current) {
       const lat = parseFloat(pepiniere.latitude);
       const lng = parseFloat(pepiniere.longitude);
+      const currentMapStyle = mapStyle || "street"; // Valeur par défaut
       if (!isNaN(lat) && !isNaN(lng)) {
-        mapRef.current.setView([lat, lng], 15);
+        // Utiliser la limitation du zoom maximum selon le style
+        mapRef.current.setView([lat, lng], maxZoomLevels[currentMapStyle]);
       }
     }
   };
@@ -198,6 +213,8 @@ const PepinieresMap = ({
         className="z-0"
         maxBounds={MADAGASCAR_BOUNDS}
         maxBoundsViscosity={1.0}
+        maxZoom={maxZoomLevels[mapStyle || "street"]} // Correction : cette ligne était déjà correcte
+        minZoom={4} // Ajout d'un zoom minimum
         whenReady={() => {
           setTimeout(() => {
             if (mapRef.current && mapRef.current.invalidateSize) {
@@ -208,22 +225,28 @@ const PepinieresMap = ({
         onClick={handleMapClick}
       >
         <TileLayer
-          url={mapStyles[mapStyle]}
-          attribution={attribution[mapStyle]}
+          url={mapStyles[mapStyle || "street"]}
+          attribution={attribution[mapStyle || "street"]}
+          maxZoom={maxZoomLevels[mapStyle || "street"]} // Correction : cette ligne était déjà correcte
+          minZoom={4} // Ajout d'un zoom minimum pour les tuiles
         />
         {/* Satellite + labels */}
-        {mapStyle === "satellite" && (
+        {(mapStyle || "street") === "satellite" && (
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
             attribution="Labels © Esri"
+            maxZoom={maxZoomLevels[mapStyle || "street"]} // Correction appliquée ici
+            minZoom={4}
           />
         )}
         {/* Hybride = satellite + OSM routes/villes */}
-        {mapStyle === "hybrid" && (
+        {(mapStyle || "street") === "hybrid" && (
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="© OpenStreetMap contributors"
             opacity={0.7}
+            maxZoom={maxZoomLevels[mapStyle || "street"]} // Correction appliquée ici
+            minZoom={4}
           />
         )}
 

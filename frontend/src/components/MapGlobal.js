@@ -68,6 +68,13 @@ const attribution = {
   hybrid: '© Esri'
 };
 
+// Configuration des niveaux de zoom maximum par style de carte
+const maxZoomLevels = {
+  street: 19,
+  satellite: 17, // Limitation pour éviter les tuiles blanches
+  hybrid: 17
+};
+
 function parseGeojson(geojson) {
   if (!geojson) return null;
   if (typeof geojson === 'string') {
@@ -119,48 +126,62 @@ export default function MapGlobal({ parcelles = [], sieges = [], pepinieres = []
         className="z-0"
         maxBounds={MADAGASCAR_BOUNDS}
         maxBoundsViscosity={1.0}
-        maxZoom={19}
+        maxZoom={maxZoomLevels[mapStyle]}
         whenReady={() => { setTimeout(() => { if (mapRef.current && mapRef.current.invalidateSize) { mapRef.current.invalidateSize(); } }, 200); }}
         onClick={handleMapClick}
       >
-        <TileLayer url={mapStyles[mapStyle]} attribution={attribution[mapStyle]} />
+        <TileLayer url={mapStyles[mapStyle]} attribution={attribution[mapStyle]} maxZoom={maxZoomLevels[mapStyle]} />
         {mapStyle === 'satellite' && (
-          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution="Labels © Esri" />
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution="Labels © Esri" maxZoom={maxZoomLevels[mapStyle]} />
         )}
         {mapStyle === 'hybrid' && (
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" opacity={0.7} />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" opacity={0.7} maxZoom={maxZoomLevels[mapStyle]} />
         )}
         {/* Parcelles */}
         {Array.isArray(parcelles) && parcelles.map((parcelle) => {
           const geojson = parseGeojson(parcelle.geojson);
+          let polygons = [];
           let center = null;
-          if (geojson && geojson.type === 'Polygon' && geojson.coordinates) {
-            center = geojson.coordinates[0].reduce((acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]], [0, 0]);
-            center = [center[1] / geojson.coordinates[0].length, center[0] / geojson.coordinates[0].length];
+          if (geojson) {
+            if (geojson.type === 'Polygon' && geojson.coordinates) {
+              polygons = [geojson.coordinates[0].map(coord => [coord[1], coord[0]])];
+              center = geojson.coordinates[0].reduce((acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]], [0, 0]);
+              center = [center[1] / geojson.coordinates[0].length, center[0] / geojson.coordinates[0].length];
+            } else if (geojson.type === 'MultiPolygon' && geojson.coordinates) {
+              polygons = geojson.coordinates.map(poly => poly[0].map(coord => [coord[1], coord[0]]));
+              // Calculer le centre du premier polygone pour le marker
+              if (geojson.coordinates[0] && geojson.coordinates[0][0]) {
+                const coords = geojson.coordinates[0][0];
+                center = coords.reduce((acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]], [0, 0]);
+                center = [center[1] / coords.length, center[0] / coords.length];
+              }
+            }
           }
           return (
             <React.Fragment key={parcelle.id}>
-              {geojson && geojson.coordinates && (
+              {polygons.map((positions, idx) => (
                 <Polygon
-                  positions={geojson.coordinates[0].map(coord => [coord[1], coord[0]])}
+                  key={parcelle.id + '-' + idx}
+                  positions={positions}
                   pathOptions={{ color: '#3b82f6', weight: 2, fillOpacity: 0.2 }}
                   eventHandlers={{
                     click: () => {
                       setSelectedParcelle(parcelle);
-                      if (mapRef.current && geojson.coordinates) {
-                        const latlngs = geojson.coordinates[0].map(coord => [coord[1], coord[0]]);
-                        mapRef.current.fitBounds(latlngs, { maxZoom: 17, padding: [40, 40] });
+                      if (mapRef.current && positions) {
+                        const maxZoomForFit = Math.min(maxZoomLevels[mapStyle], 17);
+                        mapRef.current.fitBounds(positions, { maxZoom: maxZoomForFit, padding: [40, 40] });
                       }
                     }
                   }}
                 />
-              )}
+              ))}
               {center && (
                 <Marker position={center} icon={full3DIcon} eventHandlers={{
                   click: () => {
                     setSelectedParcelle(parcelle);
                     if (mapRef.current && center) {
-                      mapRef.current.setView(center, 17, { animate: true });
+                      const zoomLevel = Math.min(maxZoomLevels[mapStyle], 17);
+                      mapRef.current.setView(center, zoomLevel, { animate: true });
                     }
                   }
                 }} />
@@ -178,7 +199,8 @@ export default function MapGlobal({ parcelles = [], sieges = [], pepinieres = []
               click: () => {
                 setSelectedSiege(siege);
                 if (mapRef.current) {
-                  mapRef.current.setView([parseFloat(siege.latitude), parseFloat(siege.longitude)], 17, { animate: true });
+                  const zoomLevel = Math.min(maxZoomLevels[mapStyle], 17);
+                  mapRef.current.setView([parseFloat(siege.latitude), parseFloat(siege.longitude)], zoomLevel, { animate: true });
                 }
               }
             }}
@@ -194,7 +216,8 @@ export default function MapGlobal({ parcelles = [], sieges = [], pepinieres = []
               click: () => {
                 setSelectedPepiniere(pepiniere);
                 if (mapRef.current) {
-                  mapRef.current.setView([parseFloat(pepiniere.latitude), parseFloat(pepiniere.longitude)], 17, { animate: true });
+                  const zoomLevel = Math.min(maxZoomLevels[mapStyle], 17);
+                  mapRef.current.setView([parseFloat(pepiniere.latitude), parseFloat(pepiniere.longitude)], zoomLevel, { animate: true });
                 }
               }
             }}
@@ -222,4 +245,4 @@ export default function MapGlobal({ parcelles = [], sieges = [], pepinieres = []
       )}
     </div>
   );
-} 
+}
