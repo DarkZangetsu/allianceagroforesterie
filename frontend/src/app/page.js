@@ -1,5 +1,4 @@
 "use client";
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@apollo/client';
 import { GET_ALL_PARCELLES, GET_ALL_SIEGES, GET_ALL_PEPINIERES, GET_ALL_USERS } from '../lib/graphql-queries';
 import { useState } from 'react';

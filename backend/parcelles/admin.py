@@ -1,11 +1,57 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.contrib.auth.hashers import make_password
+from django import forms
+from django.core.exceptions import ValidationError
+from .models import User, Parcelle, ParcelleImage, Siege, SiegeImage, Pepiniere, PepiniereImage
+
+# Désinscrire le modèle Group par défaut
 admin.site.unregister(Group)
 admin.site.index_title = "Alliance Agroforesterie"
 admin.site.site_title = "Alliance Agroforesterie"
 admin.site.site_header = "Alliance Agroforesterie"
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Parcelle, ParcelleImage, Siege, SiegeImage, Pepiniere, PepiniereImage
+
+class UserCreationForm(forms.ModelForm):
+    """Formulaire pour créer de nouveaux utilisateurs"""
+    password1 = forms.CharField(label='Mot de passe', widget=forms.PasswordInput)
+    password2 = forms.CharField(label='Confirmation mot de passe', widget=forms.PasswordInput)
+
+    class Meta:
+        model = User
+        fields = ('email', 'role', 'nom_institution')
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get("password1")
+        password2 = self.cleaned_data.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("Les mots de passe ne correspondent pas")
+        return password2
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
+
+class UserChangeForm(forms.ModelForm):
+    """Formulaire pour mettre à jour les utilisateurs existants"""
+    password = ReadOnlyPasswordHashField(
+        label="Mot de passe",
+        help_text="Les mots de passe bruts ne sont pas stockés, donc il n'y a "
+                  "aucun moyen de voir le mot de passe de cet utilisateur, mais vous pouvez "
+                  "changer le mot de passe en utilisant <a href=\"../password/\">ce formulaire</a>."
+    )
+
+    class Meta:
+        model = User
+        fields = '__all__'
+
+    def clean_password(self):
+        # Retourner la valeur initiale, peu importe ce que l'utilisateur fournit
+        return self.initial["password"]
 
 class ParcelleImageInline(admin.TabularInline):
     model = ParcelleImage
@@ -19,27 +65,43 @@ class ParcelleImageInline(admin.TabularInline):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True  # Permettre la suppression pour la cascade
 
 @admin.register(User)
 class CustomUserAdmin(BaseUserAdmin):
-    list_display = ('email','nom_institution','role', 'is_staff', 'date_joined')
-    list_filter = ('role', 'is_staff', 'is_superuser', 'date_joined')
-    search_fields = ('email', 'first_name', 'last_name')
-    ordering = ('-date_joined',)
-    readonly_fields = ('last_login', 'date_joined')
+    # Formulaires à utiliser pour ajouter et modifier des instances d'utilisateur
+    form = UserChangeForm
+    add_form = UserCreationForm
+
+    # Les champs à utiliser dans l'affichage du modèle User
+    list_display = ('email', 'nom_institution', 'role', 'is_staff', 'date_joined', 'is_active')
+    list_filter = ('role', 'is_staff', 'is_superuser', 'is_active', 'date_joined', 'nom_institution')
+    
+    # Organisation des champs sur les pages d'édition d'utilisateur
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Informations personnelles', {'fields': ('role', 'logo', 'abreviation', 'nom_institution', 'nom_projet')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+        ('Informations personnelles', {
+            'fields': ('first_name', 'last_name', 'role', 'logo', 'abreviation', 'nom_institution', 'nom_projet')
+        }),
+        ('Permissions', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+        }),
         ('Dates importantes', {'fields': ('last_login', 'date_joined')}),
     )
+    
+    # add_fieldsets n'est pas un attribut ModelAdmin standard. UserAdmin
+    # l'écrase pour fournir des affichages personnalisés pour la page de création d'utilisateur.
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'password1', 'password2','role', 'logo', 'abreviation', 'nom_institution', 'nom_projet', 'is_active', 'is_staff', 'is_superuser'),
+            'fields': ('email', 'role', 'nom_institution', 'password1', 'password2'),
         }),
     )
+    
+    search_fields = ('email', 'nom_institution')
+    ordering = ('email',)
+    filter_horizontal = ('groups', 'user_permissions',)
+    readonly_fields = ('last_login', 'date_joined')
 
 @admin.register(Parcelle)
 class ParcelleAdmin(admin.ModelAdmin):
@@ -85,7 +147,7 @@ class ParcelleAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True  # Permettre la suppression pour la cascade
 
 @admin.register(ParcelleImage)
 class ParcelleImageAdmin(admin.ModelAdmin):
@@ -114,7 +176,7 @@ class ParcelleImageAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True  # Permettre la suppression pour la cascade
 
 class SiegeImageInline(admin.TabularInline):
     model = SiegeImage
@@ -128,7 +190,7 @@ class SiegeImageInline(admin.TabularInline):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True  # Permettre la suppression pour la cascade
 
 @admin.register(Siege)
 class SiegeAdmin(admin.ModelAdmin):
@@ -168,7 +230,7 @@ class SiegeAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True  # Permettre la suppression pour la cascade
 
 @admin.register(SiegeImage)
 class SiegeImageAdmin(admin.ModelAdmin):
@@ -197,7 +259,7 @@ class SiegeImageAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True  # Permettre la suppression pour la cascade
 
 class PepiniereImageInline(admin.TabularInline):
     model = PepiniereImage
@@ -250,7 +312,7 @@ class PepiniereAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True
 
 @admin.register(PepiniereImage)
 class PepiniereImageAdmin(admin.ModelAdmin):
@@ -279,4 +341,4 @@ class PepiniereImageAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True

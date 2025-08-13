@@ -65,14 +65,14 @@ const mapStyles = {
 const attribution = {
   street: '© OpenStreetMap contributors',
   satellite: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-  hybrid: '© Esri'
+  hybrid: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
 };
 
-// Configuration des niveaux de zoom maximum par style de carte
+// Configuration des niveaux de zoom maximum par style de carte - Optimisé pour Madagascar
 const maxZoomLevels = {
   street: 19,
-  satellite: 17, // Limitation pour éviter les tuiles blanches
-  hybrid: 17
+  satellite: 18, // Excellent niveau de détail pour Madagascar avec Esri
+  hybrid: 18
 };
 
 function parseGeojson(geojson) {
@@ -132,10 +132,20 @@ export default function MapGlobal({ parcelles = [], sieges = [], pepinieres = []
       >
         <TileLayer url={mapStyles[mapStyle]} attribution={attribution[mapStyle]} maxZoom={maxZoomLevels[mapStyle]} />
         {mapStyle === 'satellite' && (
-          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution="Labels © Esri" maxZoom={maxZoomLevels[mapStyle]} />
+          <TileLayer 
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" 
+            attribution="Labels © Esri" 
+            maxZoom={maxZoomLevels[mapStyle]} 
+            opacity={0.8}
+          />
         )}
         {mapStyle === 'hybrid' && (
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" opacity={0.7} maxZoom={maxZoomLevels[mapStyle]} />
+          <TileLayer 
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" 
+            attribution="Labels © Esri" 
+            opacity={0.9} 
+            maxZoom={maxZoomLevels[mapStyle]} 
+          />
         )}
         {/* Parcelles */}
         {Array.isArray(parcelles) && parcelles.map((parcelle) => {
